@@ -124,7 +124,6 @@ internal class AutoUpdateManager : IServiceType
     {
         Unrestricted,
         AllowNone,
-        AllowMainRepo,
     }
 
     /// <summary>
@@ -152,7 +151,9 @@ internal class AutoUpdateManager : IServiceType
             // If we're only notifying, I guess it's fine to list all plugins.
             AutoUpdateBehavior.OnlyNotify => UpdateListingRestriction.Unrestricted,
 
-            AutoUpdateBehavior.UpdateMainRepo => UpdateListingRestriction.AllowMainRepo,
+            // Standalone has no official main repository. Every candidate has already been matched to the
+            // exact configured source URL of the installed plugin, so this legacy setting means all matched repos.
+            AutoUpdateBehavior.UpdateMainRepo => UpdateListingRestriction.Unrestricted,
             AutoUpdateBehavior.UpdateAll => UpdateListingRestriction.Unrestricted,
             _ => throw new ArgumentOutOfRangeException(nameof(behavior), behavior, null),
         };
@@ -471,9 +472,6 @@ internal class AutoUpdateManager : IServiceType
                 return false;
 
             if (restriction == UpdateListingRestriction.AllowNone && optIn is not { Kind: AutoUpdatePreference.OptKind.AlwaysUpdate })
-                return false;
-
-            if (restriction == UpdateListingRestriction.AllowMainRepo && availablePluginUpdate.InstalledPlugin.IsThirdParty)
                 return false;
 
             return true;

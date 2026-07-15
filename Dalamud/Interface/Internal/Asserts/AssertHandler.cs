@@ -229,7 +229,7 @@ internal class AssertHandler : IDisposable
             else
             {
                 text = "Some code in a plugin or Dalamud itself has caused an ImGui assertion failure. " +
-                       "Please report this problem in the Dalamud discord.\n\n";
+                       "This standalone build has no official support channel; inspect the local logs and source before continuing.\n\n";
             }
 
             text += $"You may attempt to continue running the game, but Dalamud UI elements may not work " +

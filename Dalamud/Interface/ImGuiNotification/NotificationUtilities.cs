@@ -130,7 +130,6 @@ public static class NotificationUtilities
         if (!Service<PluginImageCache>.Get().TryGetIcon(
                 plugin,
                 plugin.Manifest,
-                plugin.IsThirdParty,
                 out var texture, out _) || texture is null)
         {
             texture = dam.GetDalamudTextureWrap(DalamudAsset.DefaultIcon);

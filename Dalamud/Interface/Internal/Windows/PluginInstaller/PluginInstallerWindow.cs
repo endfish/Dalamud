@@ -229,12 +229,11 @@ internal class PluginInstallerWindow : Window, IDisposable
         IsThirdParty = 1 << 0,
         HasTrouble = 1 << 1,
         UpdateAvailable = 1 << 2,
-        MainRepoCrossUpdate = 1 << 3,
-        IsNew = 1 << 4,
-        IsInstallableOutdated = 1 << 5,
-        IsOrphan = 1 << 6,
-        IsTesting = 1 << 7,
-        IsIncompatible = 1 << 8,
+        IsNew = 1 << 3,
+        IsInstallableOutdated = 1 << 4,
+        IsOrphan = 1 << 5,
+        IsTesting = 1 << 6,
+        IsIncompatible = 1 << 7,
     }
 
     private enum InstalledPluginListFilter
@@ -2344,7 +2343,7 @@ internal class PluginInstallerWindow : Window, IDisposable
             var iconTex = this.imageCache.DefaultIcon;
 
             // Use the remote manifest so installed plugins fall back to the repo icon.
-            var hasIcon = this.imageCache.TryGetIcon(plugin, locManifest, flags.HasFlag(PluginHeaderFlags.IsThirdParty), out var cachedIconTex, out var loadedSince);
+            var hasIcon = this.imageCache.TryGetIcon(plugin, locManifest, out var cachedIconTex, out var loadedSince);
             if (hasIcon && cachedIconTex != null)
             {
                 iconTex = cachedIconTex;
@@ -2564,10 +2563,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
 
-            ImGui.TextWrapped(
-                flags.HasFlag(PluginHeaderFlags.MainRepoCrossUpdate)
-                    ? Locs.PluginBody_NoServiceThirdCrossUpdate
-                    : Locs.PluginBody_NoServiceThird);
+            ImGui.TextWrapped(Locs.PluginBody_NoServiceThird);
 
             ImGui.PopStyleColor();
         }
@@ -2638,7 +2634,7 @@ internal class PluginInstallerWindow : Window, IDisposable
             if (log is PluginChangelogEntry pluginLog)
             {
                 icon = this.imageCache.DefaultIcon;
-                var hasIcon = this.imageCache.TryGetIcon(pluginLog.Plugin, pluginLog.Plugin.Manifest, pluginLog.Plugin.IsThirdParty, out var cachedIconTex, out _);
+                var hasIcon = this.imageCache.TryGetIcon(pluginLog.Plugin, pluginLog.Plugin.Manifest, out var cachedIconTex, out _);
                 if (hasIcon && cachedIconTex != null)
                 {
                     icon = cachedIconTex;
@@ -2825,7 +2821,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
             ImGuiHelpers.ScaledDummy(5);
 
-            if (this.DrawPluginImages(null, manifest, isThirdParty, index))
+            if (this.DrawPluginImages(null, manifest, index))
                 ImGuiHelpers.ScaledDummy(5);
 
             ImGui.Unindent();
@@ -2974,9 +2970,6 @@ internal class PluginInstallerWindow : Window, IDisposable
             availablePluginUpdate = null;
 
         // Update available
-        var isMainRepoCrossUpdate = availablePluginUpdate != null &&
-                                    availablePluginUpdate.UpdateManifest.RepoUrl != plugin.Manifest.RepoUrl &&
-                                    availablePluginUpdate.UpdateManifest.RepoUrl == PluginRepository.MainRepoUrl;
         if (availablePluginUpdate != null)
         {
             label += Locs.PluginTitleMod_HasUpdate;
@@ -3015,8 +3008,8 @@ internal class PluginInstallerWindow : Window, IDisposable
             trouble = true;
         }
 
-        // Orphaned, if we don't have a cross-repo update
-        if (plugin.IsOrphaned && !isMainRepoCrossUpdate)
+        // Orphaned
+        if (plugin.IsOrphaned)
         {
             label += Locs.PluginTitleMod_OrphanedError;
             trouble = true;
@@ -3065,8 +3058,6 @@ internal class PluginInstallerWindow : Window, IDisposable
             flags |= PluginHeaderFlags.HasTrouble;
         if (availablePluginUpdate != null)
             flags |= PluginHeaderFlags.UpdateAvailable;
-        if (isMainRepoCrossUpdate)
-            flags |= PluginHeaderFlags.MainRepoCrossUpdate;
         if (plugin.IsOrphaned)
             flags |= PluginHeaderFlags.IsOrphan;
         if (plugin.IsTesting)
@@ -3194,7 +3185,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
             ImGuiHelpers.ScaledDummy(5);
 
-            if (this.DrawPluginImages(plugin, manifest, isThirdParty, index))
+            if (this.DrawPluginImages(plugin, manifest, index))
                 ImGuiHelpers.ScaledDummy(5);
 
             ImGui.Unindent();
@@ -3693,21 +3684,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
     private void DrawSendFeedbackButton(RemotePluginManifest manifest, bool isTesting, bool big)
     {
-        var clicked = big ?
-                          ImGuiComponents.IconButtonWithText(FontAwesomeIcon.Comment, Locs.FeedbackModal_Title) :
-                          ImGuiComponents.IconButton(FontAwesomeIcon.Comment);
-
-        if (clicked)
-        {
-            this.feedbackPlugin = manifest;
-            this.feedbackModalOnNextFrame = true;
-            this.feedbackIsTesting = isTesting;
-        }
-
-        if (ImGui.IsItemHovered())
-        {
-            ImGui.SetTooltip(Locs.FeedbackModal_Title);
-        }
+        // Standalone has no central feedback relay. Repository authors may expose their own support links.
     }
 
     private void DrawDevPluginValidationIssues(LocalDevPlugin devPlugin)
@@ -3997,9 +3974,9 @@ internal class PluginInstallerWindow : Window, IDisposable
         return false;
     }
 
-    private bool DrawPluginImages(LocalPlugin? plugin, IPluginManifest manifest, bool isThirdParty, int index)
+    private bool DrawPluginImages(LocalPlugin? plugin, IPluginManifest manifest, int index)
     {
-        var hasImages = this.imageCache.TryGetImages(plugin, manifest, isThirdParty, out var imageTextures);
+        var hasImages = this.imageCache.TryGetImages(plugin, manifest, out var imageTextures);
         if (!hasImages || imageTextures.All(x => x == null))
             return false;
 
@@ -4801,21 +4778,21 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         public static string FeedbackModal_ContactInformation => Loc.Localize("InstallerFeedbackContactInfo", "Contact information");
 
-        public static string FeedbackModal_ContactInformationHelp => Loc.Localize("InstallerFeedbackContactInfoHelp", "Discord usernames and e-mail addresses are accepted.\nIf you submit a Discord username, please join our discord server so that we can reach out to you easier.");
+        public static string FeedbackModal_ContactInformationHelp => Loc.Localize("InstallerFeedbackContactInfoHelp", "Standalone has no central feedback relay. Contact the repository author directly.");
 
         public static string FeedbackModal_ContactInformationWarning => Loc.Localize("InstallerFeedbackContactInfoWarning", "Do not submit in-game character names.");
 
         public static string FeedbackModal_ContactInformationRequired => Loc.Localize("InstallerFeedbackContactInfoRequired", "Contact information has not been provided. We require contact information to respond to questions, or to request additional information to troubleshoot problems.");
 
-        public static string FeedbackModal_ContactInformationDiscordButton => Loc.Localize("ContactInformationDiscordButton", "Join XIVLauncher & Dalamud Discord");
+        public static string FeedbackModal_ContactInformationDiscordButton => Loc.Localize("ContactInformationDiscordButton", "Open Standalone source notes");
 
-        public static string FeedbackModal_ContactInformationDiscordUrl => Loc.Localize("ContactInformationDiscordUrl", "https://goat.place/");
+        public static string FeedbackModal_ContactInformationDiscordUrl => Loc.Localize("ContactInformationDiscordUrl", "https://github.com/endfish/DalamudStandaloneCN#readme");
 
         public static string FeedbackModal_IncludeLastError => Loc.Localize("InstallerFeedbackIncludeLastError", "Include last error message");
 
         public static string FeedbackModal_IncludeLastErrorHint => Loc.Localize("InstallerFeedbackIncludeLastErrorHint", "This option can give the plugin developer useful feedback on what exactly went wrong.");
 
-        public static string FeedbackModal_Hint => Loc.Localize("InstallerFeedbackHint", "All plugin developers will be able to see your feedback.\nPlease never include any personal or revealing information.\nIf you chose to include the last error message, information like your Windows username may be included.\n\nThe collected feedback is not stored on our end and immediately relayed to Discord.");
+        public static string FeedbackModal_Hint => Loc.Localize("InstallerFeedbackHint", "Standalone does not submit feedback to an official service. Use the plugin repository's own support channel and review logs for private information before sharing them.");
 
         public static string FeedbackModal_NotificationSuccess => Loc.Localize("InstallerFeedbackNotificationSuccess", "Your feedback was sent successfully!");
 

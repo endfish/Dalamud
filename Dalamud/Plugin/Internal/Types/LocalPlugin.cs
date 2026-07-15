@@ -185,17 +185,16 @@ internal class LocalPlugin : IAsyncDisposable
     public bool IsTesting => this.manifest.Testing;
 
     /// <summary>
-    /// Gets a value indicating whether this plugin is orphaned(belongs to a repo) or not.
+    /// Gets a value indicating whether this plugin is orphaned. Standalone keeps local plugins loadable
+    /// when their source repository is unavailable.
     /// </summary>
-    public bool IsOrphaned => !this.IsDev &&
-                              this.GetSourceRepository() == null;
+    public bool IsOrphaned => false;
 
     /// <summary>
-    /// Gets a value indicating whether this plugin is serviced(repo still exists, but plugin no longer does).
+    /// Gets a value indicating whether this plugin is decommissioned. Standalone treats removed repository
+    /// entries as unmanaged local installations instead of disabling them.
     /// </summary>
-    public bool IsDecommissioned => !this.IsDev &&
-                                    this.GetSourceRepository()?.State == PluginRepositoryState.Success &&
-                                    this.GetSourceRepository()?.PluginMaster?.FirstOrDefault(x => x.InternalName == this.manifest.InternalName) == null;
+    public bool IsDecommissioned => false;
 
     /// <summary>
     /// Gets a value indicating whether this plugin has been banned.
@@ -576,13 +575,11 @@ internal class LocalPlugin : IAsyncDisposable
             return null;
 
         var repos = Service<PluginManager>.Get().Repos;
-        return repos.FirstOrDefault(x =>
-        {
-            if (!x.IsThirdParty && !this.manifest.IsThirdParty)
-                return true;
-
-            return x.PluginMasterUrl == this.manifest.InstalledFromUrl;
-        });
+        return repos.FirstOrDefault(
+            repository => string.Equals(
+                repository.PluginMasterUrl,
+                this.manifest.InstalledFromUrl,
+                StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

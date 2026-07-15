@@ -1,12 +1,7 @@
-using System.Net.Http;
-using System.Text;
+using System;
 using System.Threading.Tasks;
 
-using Dalamud.Networking.Http;
 using Dalamud.Plugin.Internal.Types.Manifest;
-using Dalamud.Utility;
-
-using Newtonsoft.Json;
 
 namespace Dalamud.Support;
 
@@ -15,8 +10,6 @@ namespace Dalamud.Support;
 /// </summary>
 internal static class BugBait
 {
-    private const string BugBaitUrl = ServerAddress.MainAddress + "/plugin/feedback";
-
     /// <summary>
     /// Send feedback to Discord.
     /// </summary>
@@ -26,55 +19,6 @@ internal static class BugBait
     /// <param name="reporter">The reporter name.</param>
     /// <param name="includeException">Whether the most recent exception to occur should be included in the report.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    public static async Task SendFeedback(RemotePluginManifest plugin, bool isTesting, string content, string reporter, bool includeException)
-    {
-        if (content.IsNullOrWhitespace())
-            return;
-
-        var model = new FeedbackModel
-        {
-            Content = content,
-            Reporter = reporter,
-            Name = plugin.InternalName,
-            Version = isTesting ? plugin.TestingAssemblyVersion?.ToString() : plugin.AssemblyVersion.ToString(),
-            Platform = Util.GetHostPlatform().ToString(),
-            DalamudHash = Versioning.GetScmVersion(),
-        };
-
-        if (includeException)
-        {
-            model.Exception = Troubleshooting.LastException == null ? "Was included, but none happened" : Troubleshooting.LastException?.ToString();
-        }
-
-        var httpClient = Service<HappyHttpClient>.Get().SharedHttpClient;
-
-        var postContent = new StringContent(JsonConvert.SerializeObject(model), Encoding.UTF8, "application/json");
-        var response = await httpClient.PostAsync(BugBaitUrl, postContent);
-
-        response.EnsureSuccessStatusCode();
-    }
-
-    private class FeedbackModel
-    {
-        [JsonProperty("content")]
-        public string? Content { get; set; }
-
-        [JsonProperty("name")]
-        public string? Name { get; set; }
-
-        [JsonProperty("dhash")]
-        public string? DalamudHash { get; set; }
-
-        [JsonProperty("version")]
-        public string? Version { get; set; }
-
-        [JsonProperty("platform")]
-        public string? Platform { get; set; }
-
-        [JsonProperty("reporter")]
-        public string? Reporter { get; set; }
-
-        [JsonProperty("exception")]
-        public string? Exception { get; set; }
-    }
+    public static Task SendFeedback(RemotePluginManifest plugin, bool isTesting, string content, string reporter, bool includeException) =>
+        Task.FromException(new NotSupportedException("Standalone builds do not provide an official feedback service."));
 }

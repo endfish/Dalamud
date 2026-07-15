@@ -1,19 +1,19 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Caching.Abstractions;
-using Microsoft.Extensions.Caching.InMemory;
 
 using Dalamud.Logging.Internal;
 using Dalamud.Networking.Http;
 using Dalamud.Plugin.Internal.Types.Manifest;
 using Dalamud.Utility;
+
+using Microsoft.Extensions.Caching.Abstractions;
+using Microsoft.Extensions.Caching.InMemory;
 
 using Newtonsoft.Json;
 
@@ -24,16 +24,9 @@ namespace Dalamud.Plugin.Internal.Types;
 /// </summary>
 internal class PluginRepository
 {
-    /// <summary>
-    /// The URL of the official main repository.
-    /// </summary>
-    public const string MainRepoUrl = ServerAddress.MainAddress + "/Plugin/PluginMaster";
-
     private const int HttpRequestTimeoutSeconds = 20;
 
     private static readonly ModuleLog Log = ModuleLog.Create<PluginRepository>();
-    private readonly HttpClient httpClient;
-
     private static readonly InMemoryCacheHandler CacheHandler = new(
         new SocketsHttpHandler
         {
@@ -41,6 +34,8 @@ internal class PluginRepository
             ConnectCallback = Service<HappyHttpClient>.Get().SharedHappyEyeballsCallback.ConnectCallback,
         },
         CacheExpirationProvider.CreateSimple(TimeSpan.FromHours(3), TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(0)));
+
+    private readonly HttpClient httpClient;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PluginRepository"/> class.
@@ -70,7 +65,7 @@ internal class PluginRepository
             },
         };
         this.PluginMasterUrl = pluginMasterUrl;
-        this.IsThirdParty = pluginMasterUrl != MainRepoUrl;
+        this.IsThirdParty = true;
         this.IsEnabled = isEnabled;
     }
 
@@ -98,14 +93,6 @@ internal class PluginRepository
     /// Gets the initialization state of the plugin repository.
     /// </summary>
     public PluginRepositoryState State { get; private set; }
-
-    /// <summary>
-    /// Gets a new instance of the <see cref="PluginRepository"/> class for the main repo.
-    /// </summary>
-    /// <param name="happyHttpClient">An instance of <see cref="HappyHttpClient"/>.</param>
-    /// <returns>The new instance of main repository.</returns>
-    public static PluginRepository CreateMainRepo(HappyHttpClient happyHttpClient) =>
-        new(happyHttpClient, MainRepoUrl, true);
 
     /// <summary>
     /// Reload the plugin master asynchronously in a task.
@@ -142,45 +129,7 @@ internal class PluginRepository
                 manifest.SourceRepo = this;
             }
 
-            var pm = Service<PluginManager>.Get();
-            var official = pm.Repos.First();
-            Debug.Assert(!official.IsThirdParty, "First repository should be official repository");
-
-            if (official.State == PluginRepositoryState.Success && this.IsThirdParty)
-            {
-                pluginMaster = pluginMaster.Where(thisRepoEntry =>
-                {
-                    if (official.PluginMaster!.Any(officialRepoEntry =>
-                                                       string.Equals(thisRepoEntry.InternalName, officialRepoEntry.InternalName, StringComparison.InvariantCultureIgnoreCase)))
-                    {
-                        Log.Warning(
-                            "The repository {RepoName} tried to replace the plugin {PluginName}, which is already installed through the official repo - this is no longer allowed for security reasons. " +
-                            "Please reach out if you have an use case for this.",
-                            this.PluginMasterUrl,
-                            thisRepoEntry.InternalName);
-                        return false;
-                    }
-
-                    return true;
-                }).ToList();
-            }
-            else if (this.IsThirdParty)
-            {
-                Log.Warning("Official repository not loaded - couldn't check for overrides!");
-                this.State = PluginRepositoryState.Fail;
-                return;
-            }
-
             this.PluginMaster = pluginMaster.Where(this.IsValidManifest).ToList().AsReadOnly();
-
-            // API9 HACK: Force IsHide to false, we should remove that
-            if (!this.IsThirdParty)
-            {
-                foreach (var manifest in this.PluginMaster)
-                {
-                    manifest.IsHide = false;
-                }
-            }
 
             Log.Information($"Successfully fetched repo: {this.PluginMasterUrl}");
             this.State = PluginRepositoryState.Success;

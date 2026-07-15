@@ -2265,10 +2265,9 @@ int main() {
         config.pszContent = (L""
             L"\x53D1\x751F\x7684\x539F\x56E0\x53EF\x80FD\x662F\x4E00\x4E2A\x51FA\x9519\x7684\x63D2\x4EF6\x3001\x635F\x574F\x7684 TexTools Mod\x3001\x5176\x4ED6\x7684\x7B2C\x4E09\x65B9\x5DE5\x5177\xFF0C\x6216\x4EC5\x4EC5\x662F\x6E38\x620F\x672C\x8EAB\x7684 Bug\x3002" "\n"
             "\n"
-            L"\x8BF7\x5C1D\x8BD5\x4F7F\x7528 XIVLauncher \x8BBE\x7F6E\x4E2D\x7684\x6E38\x620F\x5B8C\x6574\x6027\x68C0\x67E5\x68C0\x6D4B\x6E38\x620F\x6587\x4EF6\x5B8C\x6574\x6027\xFF0C\x5E76\x4E14\x505C\x7528\x4F60\x4E0D\x9700\x8981\x7684\x63D2\x4EF6\x3002" "\n"
+            L"This is an unsupported standalone build. Disable plugins and verify the game files before trying again." "\n"
             "\n"
-            L"\x5982\x679C\x60A8\x60F3\x5728\x6211\x4EEC\x7684" R"aa( <a href="discord">)aa" L"QQ\x9891\x9053" R"aa(</a> )aa" L"\x4E2D\x5BFB\x6C42\x89E3\x51B3\x65B9\x6848\xFF0C\x8BF7\x4FDD\x5B58"
-            R"aa( <a href="exporttspack">)aa" L"\x8FD9\x4E2A\x6587\x4EF6\xFF08\x70B9\x51FB\x6B64\x5904\xFF09" R"aa(</a> )aa" L"\x5E76\x63D0\x4F9B\x7ED9\x6211\x4EEC\x3002" "\n"
+            R"aa(Read the <a href="help">source and risk notes</a>, or <a href="exporttspack">save troubleshooting information</a> for your own analysis.)aa" "\n"
         );
         config.pButtons = buttons;
         config.cButtons = ARRAYSIZE(buttons);
@@ -2307,15 +2306,13 @@ int main() {
                 {
                     const auto link = std::wstring_view(reinterpret_cast<const wchar_t*>(lParam));
                     if (link == L"help") {
-                        ShellExecuteW(hwnd, nullptr, L"https://ottercorp.github.io/faq?utm_source=vectored", nullptr, nullptr, SW_SHOW);
+                        ShellExecuteW(hwnd, nullptr, L"https://github.com/endfish/DalamudStandaloneCN#readme", nullptr, nullptr, SW_SHOW);
                     } else if (link == L"logdir") {
                         open_folder_and_select_items(hwnd, logPath.wstring());
                     } else if (link == L"logfile") {
                         ShellExecuteW(hwnd, nullptr, logPath.c_str(), nullptr, nullptr, SW_SHOW);
                     } else if (link == L"exporttspack") {
                         export_tspack(hwnd, logDir, ws_to_u8(log.str()), troubleshootingPackData);
-                    } else if (link == L"discord") {
-                        ShellExecuteW(hwnd, nullptr, L"https://pd.ottercorp.net", nullptr, nullptr, SW_SHOW);
                     } else if (link == L"resume") {
                         attemptResume = true;
                         DestroyWindow(hwnd);

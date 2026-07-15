@@ -1,8 +1,7 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
-using Dalamud.Configuration.Internal;
-using Dalamud.Networking.Http;
 using Dalamud.Utility;
 
 using Newtonsoft.Json;
@@ -15,39 +14,28 @@ namespace Dalamud.Support;
 [ServiceManager.EarlyLoadedService]
 internal class DalamudReleases : IServiceType
 {
-    private const string VersionInfoUrl = ServerAddress.MainAddress + "/Dalamud/Release/VersionInfo?track={0}";
-
-    private readonly HappyHttpClient httpClient;
-    private readonly DalamudConfiguration config;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="DalamudReleases"/> class.
     /// </summary>
-    /// <param name="httpClient">The shared HTTP client.</param>
-    /// <param name="config">The Dalamud configuration.</param>
     [ServiceManager.ServiceConstructor]
-    public DalamudReleases(HappyHttpClient httpClient, DalamudConfiguration config)
+    public DalamudReleases()
     {
-        this.httpClient = httpClient;
-        this.config = config;
     }
 
     /// <summary>
     /// Get the latest version info for the current track.
     /// </summary>
     /// <returns>The version info for the current track.</returns>
-    public async Task<DalamudVersionInfo?> GetVersionForCurrentTrack()
-    {
-        var currentTrack = Versioning.GetActiveTrack();
-        if (currentTrack.IsNullOrEmpty())
-            return null;
-
-        var url = string.Format(VersionInfoUrl, [currentTrack]);
-        var response = await this.httpClient.SharedHttpClient.GetAsync(url);
-        response.EnsureSuccessStatusCode();
-        var content = await response.Content.ReadAsStringAsync();
-        return JsonConvert.DeserializeObject<DalamudVersionInfo>(content);
-    }
+    public Task<DalamudVersionInfo?> GetVersionForCurrentTrack() =>
+        Task.FromResult<DalamudVersionInfo?>(new DalamudVersionInfo
+        {
+            Track = Versioning.GetActiveTrack() ?? "standalone-cn",
+            AssemblyVersion = Versioning.GetScmVersion(),
+            RuntimeVersion = Environment.Version.ToString(),
+            RuntimeRequired = true,
+            SupportedGameVer = string.Empty,
+            IsApplicableForCurrentGameVer = true,
+        });
 
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1600:Elements should be documented", Justification = "laziness")]
     public class DalamudVersionInfo

@@ -596,7 +596,7 @@ internal class ProfileManagerWidget
                 if (pmPlugin != null)
                 {
                     var cursorBeforeIcon = ImGui.GetCursorPos();
-                    pic.TryGetIcon(pmPlugin, pmPlugin.Manifest, pmPlugin.IsThirdParty, out var icon, out _);
+                    pic.TryGetIcon(pmPlugin, pmPlugin.Manifest, out var icon, out _);
                     icon ??= pic.DefaultIcon;
 
                     ImGui.Image(icon.Handle, new Vector2(pluginLineHeight));

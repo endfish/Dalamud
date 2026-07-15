@@ -37,8 +37,8 @@ internal record LocalPluginManifest : PluginManifest, ILocalPluginManifest
     public Guid WorkingPluginId { get; set; } = Guid.Empty;
 
     /// <summary>
-    /// Gets a value indicating whether this manifest is associated with a plugin that was installed from a third party
-    /// repo.
+    /// Gets a value indicating whether this manifest is associated with a configured custom repository rather than
+    /// the legacy official-source marker.
     /// </summary>
     public bool IsThirdParty => !this.InstalledFromUrl.IsNullOrEmpty() && this.InstalledFromUrl != SpecialPluginSource.MainRepo;
 

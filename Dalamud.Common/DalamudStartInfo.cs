@@ -63,6 +63,11 @@ public record DalamudStartInfo
     public string? AssetDirectory { get; set; }
 
     /// <summary>
+    /// Gets or sets the path to the standalone .NET runtime.
+    /// </summary>
+    public string? RuntimeDirectory { get; set; }
+
+    /// <summary>
     /// Gets or sets the language of the game client.
     /// </summary>
     public ClientLanguage Language { get; set; } = ClientLanguage.ChineseSimplified;

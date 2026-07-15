@@ -3,10 +3,11 @@
 /// <summary>
 /// A fake enum representing "special" sources for plugins.
 /// </summary>
-public static class SpecialPluginSource 
+public static class SpecialPluginSource
 {
     /// <summary>
-    /// Indication that this plugin came from the official Dalamud repository. 
+    /// Legacy marker retained for plugins imported from an official Dalamud installation.
+    /// Standalone does not create new installations with this source.
     /// </summary>
     public const string MainRepo = "OFFICIAL";
 

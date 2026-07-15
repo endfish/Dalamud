@@ -136,7 +136,6 @@ internal class PluginManager : IInternalDisposableService
                     }));
 
         this.configuration.PluginTestingOptIns ??= [];
-        this.MainRepo = PluginRepository.CreateMainRepo(this.happyHttpClient);
 
         registerStartupBlocker(
             Task.Run(this.LoadAndStartLoadSyncPlugins),
@@ -221,12 +220,7 @@ internal class PluginManager : IInternalDisposableService
     }
 
     /// <summary>
-    /// Gets the main repository.
-    /// </summary>
-    public PluginRepository MainRepo { get; }
-
-    /// <summary>
-    /// Gets a list of all plugin repositories. The main repo should always be first.
+    /// Gets a list of all user-configured plugin repositories, in priority order.
     /// </summary>
     public List<PluginRepository> Repos { get; private set; } = [];
 
@@ -421,24 +415,25 @@ internal class PluginManager : IInternalDisposableService
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task SetPluginReposFromConfigAsync(bool notify)
     {
-        var repos = new List<PluginRepository> { this.MainRepo };
-        repos.AddRange(this.configuration.ThirdRepoList
-                           .Where(repo => repo.IsEnabled && !repo.Url.IsNullOrEmpty())
-                           .DistinctBy(x => x.Url)
-                           .Select(repo => new PluginRepository(this.happyHttpClient, repo.Url, repo.IsEnabled)));
+        var repos = this.configuration.ThirdRepoList
+                        .Where(repo => repo.IsEnabled && !repo.Url.IsNullOrEmpty())
+                        .DistinctBy(x => x.Url, StringComparer.OrdinalIgnoreCase)
+                        .Select(repo => new PluginRepository(this.happyHttpClient, repo.Url, repo.IsEnabled))
+                        .ToList();
 
         this.Repos = repos;
-        await this.ReloadAllReposAsync();
+        await this.ReloadAllReposAsync(notify);
     }
 
     /// <summary>
     /// Reload all plugin repositories. This is called after setting repos from config, but can also be called manually to refresh repos.
     /// </summary>
+    /// <param name="notify">Whether to notify that available plugins changed after the refresh.</param>
     /// <returns>Task that will resolve once all repos are reloaded.</returns>
-    public async Task ReloadAllReposAsync()
+    public async Task ReloadAllReposAsync(bool notify = true)
     {
         if (this.repoRefreshTask is null or { IsCompleted: true })
-            this.repoRefreshTask = this.ReloadAllReposInternalAsync();
+            this.repoRefreshTask = this.ReloadAllReposInternalAsync(notify);
 
         await this.repoRefreshTask;
     }
@@ -1480,9 +1475,7 @@ internal class PluginManager : IInternalDisposableService
             }
 
             // Document the url the plugin was installed from
-            tempManifest.InstalledFromUrl = repoManifest.SourceRepo.IsThirdParty
-                                                ? repoManifest.SourceRepo.PluginMasterUrl
-                                                : SpecialPluginSource.MainRepo;
+            tempManifest.InstalledFromUrl = repoManifest.SourceRepo.PluginMasterUrl;
 
             // HACK: We need to do this at the moment so that D17 plugins can load their assets.
             // Goat should get off his ass and fix the pipeline in Plogon to specify correct URLs
@@ -1762,7 +1755,10 @@ internal class PluginManager : IInternalDisposableService
 
             var updates = this.AvailablePlugins
                               .Where(remoteManifest => plugin.Manifest.InternalName == remoteManifest.InternalName)
-                              .Where(remoteManifest => plugin.Manifest.InstalledFromUrl == remoteManifest.SourceRepo.PluginMasterUrl || !remoteManifest.SourceRepo.IsThirdParty)
+                              .Where(remoteManifest => string.Equals(
+                                         plugin.Manifest.InstalledFromUrl,
+                                         remoteManifest.SourceRepo.PluginMasterUrl,
+                                         StringComparison.OrdinalIgnoreCase))
                               .Where(remoteManifest => remoteManifest.MinimumDalamudVersion == null || Versioning.GetAssemblyVersionParsed() >= remoteManifest.MinimumDalamudVersion)
                               .Where(remoteManifest => !remoteManifest.IsTestingExclusive || this.UseTesting(remoteManifest))
                               .Where(remoteManifest =>
@@ -1809,10 +1805,7 @@ internal class PluginManager : IInternalDisposableService
 
         try
         {
-            Debug.Assert(!this.Repos.First().IsThirdParty, "First repository should be main repository");
-            await this.Repos.First().ReloadAsync(skipCache); // Load official repo first
-
-            await Task.WhenAll(this.Repos.Skip(1).Select(repo => repo.ReloadAsync(skipCache)));
+            await Task.WhenAll(this.Repos.Select(repo => repo.ReloadAsync(skipCache)));
 
             Log.Information("Repos reloaded, now refiltering...");
 
@@ -1833,10 +1826,25 @@ internal class PluginManager : IInternalDisposableService
         using var scope = this.pluginListLock.EnterScope();
 
         this.availablePluginsList.Clear();
-        this.availablePluginsList.AddRange(this.Repos
-                                                .SelectMany(repo => repo.PluginMaster)
-                                                .Where(this.IsManifestEligible)
-                                                .Where(IsManifestVisible));
+
+        var selectedByInternalName = new Dictionary<string, RemotePluginManifest>(StringComparer.OrdinalIgnoreCase);
+        foreach (var manifest in this.Repos
+                                     .SelectMany(repo => repo.PluginMaster?.AsEnumerable() ?? Enumerable.Empty<RemotePluginManifest>())
+                                     .Where(this.IsManifestEligible)
+                                     .Where(IsManifestVisible))
+        {
+            if (selectedByInternalName.TryAdd(manifest.InternalName, manifest))
+                continue;
+
+            var selected = selectedByInternalName[manifest.InternalName];
+            Log.Warning(
+                "Ignoring duplicate plugin {InternalName} from {IgnoredRepo}; configured repository priority selected {SelectedRepo}",
+                manifest.InternalName,
+                manifest.SourceRepo.PluginMasterUrl,
+                selected.SourceRepo.PluginMasterUrl);
+        }
+
+        this.availablePluginsList.AddRange(selectedByInternalName.Values);
 
         if (notify)
         {

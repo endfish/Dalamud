@@ -1,13 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http.Json;
 using System.Threading.Tasks;
 
-using Dalamud.Networking.Http;
 using Dalamud.Plugin.Internal;
 using Dalamud.Utility;
-
-using Serilog;
 
 namespace Dalamud.Interface.Internal.Windows.PluginInstaller;
 
@@ -16,9 +12,6 @@ namespace Dalamud.Interface.Internal.Windows.PluginInstaller;
 /// </summary>
 internal class DalamudChangelogManager
 {
-    private const string DalamudChangelogUrl = ServerAddress.MainAddress + "/Plugin/CoreChangelog";
-    private const string PluginChangelogUrl = ServerAddress.MainAddress + "/Plugin/History/{0}?track={1}";
-
     private readonly PluginManager manager;
 
     /// <summary>
@@ -39,45 +32,15 @@ internal class DalamudChangelogManager
     /// Reload the changelog list.
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    public async Task ReloadChangelogAsync()
+    public Task ReloadChangelogAsync()
     {
-        var client = Service<HappyHttpClient>.Get().SharedHttpClient;
-        this.Changelogs = null;
-
-        var dalamudChangelogs = await client.GetFromJsonAsync<List<DalamudChangelog>>(DalamudChangelogUrl);
-        var changelogs = dalamudChangelogs.Select(x => new DalamudChangelogEntry(x)).Cast<IChangelogEntry>().ToList();
-
-        foreach (var plugin in this.manager.InstalledPlugins)
-        {
-            if (!plugin.IsThirdParty && !plugin.IsDev)
-            {
-                try
-                {
-                    var pluginChangelogs = await client.GetFromJsonAsync<PluginHistory>(string.Format(
-                                               PluginChangelogUrl,
-                                               plugin.Manifest.InternalName,
-                                               plugin.Manifest.Dip17Channel));
-
-                    changelogs.AddRange(pluginChangelogs.Versions
-                                                                   .Where(x => x.Dip17Track ==
-                                                                               plugin.Manifest.Dip17Channel)
-                                                                   .Select(x => new PluginChangelogEntry(plugin, x)));
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Failed to load changelog for {PluginName}", plugin.Manifest.Name);
-                }
-            }
-            else
-            {
-                if (plugin.Manifest.Changelog.IsNullOrWhitespace())
-                    continue;
-
-                changelogs.Add(new PluginChangelogEntry(plugin));
-            }
-        }
-
-        this.Changelogs = changelogs.OrderByDescending(x => x.Date).ToList();
+        this.Changelogs = this.manager.InstalledPlugins
+                              .Where(plugin => !plugin.Manifest.Changelog.IsNullOrWhitespace())
+                              .Select(plugin => new PluginChangelogEntry(plugin))
+                              .Cast<IChangelogEntry>()
+                              .OrderByDescending(entry => entry.Date)
+                              .ToList();
+        return Task.CompletedTask;
     }
 
     /// <summary>

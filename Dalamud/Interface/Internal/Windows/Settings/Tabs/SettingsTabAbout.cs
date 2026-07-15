@@ -197,13 +197,16 @@ Licensed under the MIT License
 Please see licenses.txt for more information.
 
 
-Thanks to everyone in the XIVLauncher Discord server!
-Join us at: https://discord.gg/3NMcUV5
+Thanks to the Dalamud, XIVLauncher, XIVLauncherCN and related upstream communities.
+
+This is an unsupported personal Standalone CN source build.
+Standalone shell: https://github.com/endfish/DalamudStandaloneCN
 
 
 
 Dalamud is licensed under AGPL v3 or later.
-Contribute at: https://github.com/goatcorp/Dalamud
+Standalone fork: https://github.com/endfish/Dalamud
+Original upstream: https://github.com/goatcorp/Dalamud
 ";
 
     private readonly Stopwatch creditsThrottler;

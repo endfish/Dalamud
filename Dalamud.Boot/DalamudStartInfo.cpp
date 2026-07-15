@@ -108,6 +108,7 @@ void from_json(const nlohmann::json& json, DalamudStartInfo& config) {
     config.LogName = json.value("LogName", config.LogName);
     config.PluginDirectory = json.value("PluginDirectory", config.PluginDirectory);
     config.AssetDirectory = json.value("AssetDirectory", config.AssetDirectory);
+    config.RuntimeDirectory = json.value("RuntimeDirectory", config.RuntimeDirectory);
 
     if (json.contains("TempDirectory") && !json["TempDirectory"].is_null()) {
         config.TempDirectory = json.value("TempDirectory", config.TempDirectory);

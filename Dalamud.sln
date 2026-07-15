@@ -45,8 +45,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InteropGenerator", "lib\FFX
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InteropGenerator.Runtime", "lib\FFXIVClientStructs\InteropGenerator.Runtime\InteropGenerator.Runtime.csproj", "{A6AA1C3F-9470-4922-9D3F-D4549657AB22}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FfxivArgLauncher", "lib\FfxivArgLauncher\FfxivArgLauncher.csproj", "{98452E69-C90D-4893-8B0E-CAA0AE86B176}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utilities", "Utilities", "{8F079208-C227-4D96-9427-2BEBE0003944}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cimgui", "external\cimgui\cimgui.vcxproj", "{8430077C-F736-4246-A052-8EA1CECE844E}"
@@ -146,10 +144,6 @@ Global
 		{A6AA1C3F-9470-4922-9D3F-D4549657AB22}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A6AA1C3F-9470-4922-9D3F-D4549657AB22}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A6AA1C3F-9470-4922-9D3F-D4549657AB22}.Release|Any CPU.Build.0 = Release|Any CPU
-		{98452E69-C90D-4893-8B0E-CAA0AE86B176}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{98452E69-C90D-4893-8B0E-CAA0AE86B176}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{98452E69-C90D-4893-8B0E-CAA0AE86B176}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{98452E69-C90D-4893-8B0E-CAA0AE86B176}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8430077C-F736-4246-A052-8EA1CECE844E}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{8430077C-F736-4246-A052-8EA1CECE844E}.Debug|Any CPU.Build.0 = Debug|x64
 		{8430077C-F736-4246-A052-8EA1CECE844E}.Release|Any CPU.ActiveCfg = Release|x64

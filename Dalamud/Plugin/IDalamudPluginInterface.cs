@@ -59,9 +59,9 @@ public interface IDalamudPluginInterface : IServiceProvider
     /// <summary>
     /// Gets the repository from which this plugin was installed.
     ///
-    /// If a plugin was installed from the official/main repository, this will return the value of
-    /// <see cref="SpecialPluginSource.MainRepo"/>. Developer plugins will return the value of
-    /// <see cref="SpecialPluginSource.DevPlugin"/>.
+    /// Standalone installations normally return the exact configured custom repository URL. Plugins imported
+    /// from an older official installation may retain the legacy <see cref="SpecialPluginSource.MainRepo"/> marker,
+    /// and developer plugins return <see cref="SpecialPluginSource.DevPlugin"/>.
     /// </summary>
     string SourceRepository { get; }
 

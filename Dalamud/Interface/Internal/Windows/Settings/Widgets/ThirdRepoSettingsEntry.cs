@@ -270,12 +270,6 @@ internal class ThirdRepoSettingsEntry : SettingsEntry
 
     private static bool ValidThirdPartyRepoUrl(string url)
     {
-        // Disallow inputting main repo as a ThirdPartyRepo
-        if (string.Equals(url, PluginRepository.MainRepoUrl, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
         return Uri.TryCreate(url, UriKind.Absolute, out var uriResult)
                && (uriResult.Scheme == Uri.UriSchemeHttps || uriResult.Scheme == Uri.UriSchemeHttp);
     }

@@ -1,44 +1,42 @@
-# Dalamud [![Discord Shield](https://discordapp.com/api/guilds/581875019861328007/widget.png?style=shield)](https://discord.gg/3NMcUV5)
+# Dalamud Standalone CN
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/ottercorp/DalamudAssets/master/UIRes/logo.png" alt="Dalamud" width="200"/>
-</p>
+这是面向国服客户端的个人实验性 Dalamud 分支，也是
+[DalamudStandaloneCN](https://github.com/endfish/DalamudStandaloneCN) 独立注入壳所使用的核心载荷。
+项目以 [ottercorp/Dalamud](https://github.com/ottercorp/Dalamud) 为主要同步上游，并保留
+[goatcorp/Dalamud](https://github.com/goatcorp/Dalamud) 的原始成果与许可。
 
-Dalamud is a plugin development framework for FFXIV that provides access to game data and native interoperability with the game itself to add functionality and quality-of-life.
+## 项目边界
 
-It is meant to be used in conjunction with [XIVLauncherCN](https://github.com/ottercorp/FFXIVQuickLauncher), which manages and launches Dalamud for you. __It is generally not recommended for users to try to run Dalamud manually as there are multiple dependencies and assumed folder paths.__
+- 只支持向已经运行的 `ffxiv_dx11.exe` 附加注入，不负责账号登录或启动游戏。
+- 不使用 XIVLauncherCN 的数据目录，默认数据根目录为 `%APPDATA%\DalamudStandaloneCN`。
+- 不连接国服官方 Dalamud 发布、分支、反馈或插件库服务。
+- 插件来源仅包括用户配置的自定义仓库、已安装到本地的插件以及开发插件。
+- 仓库不可用或插件从仓库下架时，已安装副本仍作为本地非托管插件保留；只有来源 URL 与已配置仓库精确匹配时才会提供更新。
+- 本仓库只公开源码，不提供编译产物、发行版或面向第三方用户的技术支持。
 
-## Hold Up!
+这不是 XIVLauncherCN、OtterCorp 或 Dalamud 上游团队的官方发行版。补丁日绕过兼容性保护可能导致游戏崩溃、数据损坏或插件异常，使用者需自行阅读代码、编译并承担风险。
 
-If you are just trying to **use** Dalamud, you don't need to do anything on this page - please [download XIVLauncher](https://ottercorp.github.io/) from its official page and follow the setup instructions.
+## 分支与同步
 
-## Building and testing locally
+- `otter-sync`：跟踪国服上游，不放 Standalone 专用改动。
+- `standalone-cn`：独立注入、目录隔离、自定义插件源及补丁日研究改动。
+- `lib/FFXIVClientStructs` 指向 [endfish/FFXIVClientStructs](https://github.com/endfish/FFXIVClientStructs)，便于在国服更新后独立维护解析结构。
 
-Please check the [docs page on building Dalamud](https://dalamud.dev/building) for more information and required dependencies.
+同步上游时应先更新 `otter-sync`，再将确认过的改动合入 `standalone-cn`，不要把 Standalone 差异反向提交给上游。
 
-## Plugin development
-Dalamud features a growing API for in-game plugin development with game data and chat access and overlays.
-Please see our [Developer FAQ](https://ottercorp.github.io/faq/development) and the [API documentation](https://dalamud.dev) for more details.
+## 本地构建
 
-If you need any support regarding the API or usage of Dalamud, please [join our discord server](https://discord.gg/3NMcUV5).
+```powershell
+git submodule update --init --recursive
+dotnet restore Dalamud/Dalamud.csproj
+dotnet build Dalamud/Dalamud.csproj -c Release --no-restore
+dotnet build Dalamud.Injector/Dalamud.Injector.csproj -c Release --no-restore
+```
 
-<br>
+完整注入还需要构建原生的 `Dalamud.Boot`、准备匹配的 .NET Runtime 与 Dalamud Assets，并在独立壳配置中指定载荷目录。独立壳不会下载官方载荷，也不会替用户判断补丁日兼容性。
 
-Thanks to Mino, whose work has made this possible!
+## 许可与致谢
 
-## Components & Pipeline
+Dalamud 依据仓库中的 AGPL-3.0-or-later 许可发布。感谢 Dalamud、goatcorp、ottercorp、FFXIVClientStructs、Lumina 及所有相关上游贡献者。
 
-These components are used in order to load Dalamud into a target process.
-Dalamud can be loaded via DLL injection, or by rewriting a process' entrypoint.
-
-| Name                          | Purpose                                                                                                                      |
-|-------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| *Dalamud.Injector.Boot* (C++) | Loads the .NET Core runtime into a process via hostfxr and kicks off Dalamud.Injector                                        |
-| *Dalamud.Injector* (C#)       | Performs DLL injection on the target process                                                                                 |
-| *Dalamud.Boot* (C++)          | Loads the .NET Core runtime into the active process and kicks off Dalamud, or rewrites a target process' entrypoint to do so |
-| *Dalamud* (C#)                | Core API, game bindings, plugin framework                                                                                    |
-| *Dalamud.CorePlugin* (C#)     | Testbed plugin that can access Dalamud internals, to prototype new Dalamud features                                          |
-
-<br>
-
-##### Final Fantasy XIV © 2010-2021 SQUARE ENIX CO., LTD. All Rights Reserved. We are not affiliated with SQUARE ENIX CO., LTD. in any way.
+Final Fantasy XIV © SQUARE ENIX CO., LTD. 本项目与 SQUARE ENIX CO., LTD. 无关联。

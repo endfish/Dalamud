@@ -405,6 +405,15 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
     const auto runtimeconfig_path = std::filesystem::path(*fs_module_path).replace_filename(L"Dalamud.runtimeconfig.json").wstring();
     const auto module_path = std::filesystem::path(*fs_module_path).replace_filename(L"Dalamud.dll").wstring();
 
+    if (!g_startInfo.RuntimeDirectory.empty()) {
+        const auto runtime_directory = unicode::convert<std::wstring>(g_startInfo.RuntimeDirectory);
+        if (!SetEnvironmentVariableW(L"DALAMUD_RUNTIME", runtime_directory.c_str())) {
+            const auto error = GetLastError();
+            logging::E("Failed to set standalone runtime directory (err={})", error);
+            return HRESULT_FROM_WIN32(error);
+        }
+    }
+
     // ============================== CLR ========================================= //
 
     logging::I("Calling InitializeClrAndGetEntryPoint");

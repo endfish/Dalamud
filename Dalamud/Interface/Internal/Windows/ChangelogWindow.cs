@@ -467,8 +467,8 @@ internal sealed class ChangelogWindow : Window, IDisposable
                         break;
 
                     case State.Links:
-                        ImGui.TextWrapped("如果您注意到任何问题或需要帮助，请查看常见问题解答，并在需要帮助的情况下在我们的QQ频道上联系我们。"u8);
-                        ImGui.TextWrapped("祝您享受游戏和 Dalamud 的时光！"u8);
+                        ImGui.TextWrapped("这是个人实验性 Standalone 构建，不使用官方插件库，也不提供面向第三方用户的技术支持。"u8);
+                        ImGui.TextWrapped("使用补丁日研究功能前，请先阅读源码、风险说明并备份独立数据目录。"u8);
 
                         ImGuiHelpers.ScaledDummy(45);
 
@@ -479,7 +479,7 @@ internal sealed class ChangelogWindow : Window, IDisposable
                             return ImGuiComponents.IconButtonWithText(icon, text);
                         }
 
-                        if (CenteredIconButton(FontAwesomeIcon.Download, "Open Plugin Installer"))
+                        if (CenteredIconButton(FontAwesomeIcon.Download, "打开插件安装器"))
                         {
                             Service<DalamudInterface>.Get().OpenPluginInstaller();
                             this.IsOpen = false;
@@ -488,30 +488,16 @@ internal sealed class ChangelogWindow : Window, IDisposable
 
                         ImGuiHelpers.ScaledDummy(5);
 
-                        ImGuiHelpers.CenterCursorFor(
-                            (int)(ImGuiComponents.GetIconButtonWithTextWidth(FontAwesomeIcon.Globe, "查看 FAQ") +
-                            ImGuiComponents.GetIconButtonWithTextWidth(FontAwesomeIcon.LaughBeam, "加入我们的QQ频道") +
-                            (5 * ImGuiHelpers.GlobalScale) +
-                            (ImGui.GetStyle().ItemSpacing.X * 4)));
-                        if (ImGuiComponents.IconButtonWithText(FontAwesomeIcon.Globe, "查看 FAQ"))
+                        if (CenteredIconButton(FontAwesomeIcon.Globe, "独立注入壳与风险说明"))
                         {
-                            Util.OpenLink("https://ottercorp.github.io/faq/");
-                        }
-
-                        ImGui.SameLine();
-                        ImGuiHelpers.ScaledDummy(5);
-                        ImGui.SameLine();
-
-                        if (ImGuiComponents.IconButtonWithText(FontAwesomeIcon.LaughBeam, "加入我们的QQ频道"))
-                        {
-                            Util.OpenLink("https://pd.qq.com/s/9ehyfcha3");
+                            Util.OpenLink("https://github.com/endfish/DalamudStandaloneCN#readme");
                         }
 
                         ImGuiHelpers.ScaledDummy(5);
 
-                        if (CenteredIconButton(FontAwesomeIcon.Heart, "支持我们"))
+                        if (CenteredIconButton(FontAwesomeIcon.FileCode, "Dalamud 核心源码"))
                         {
-                            Util.OpenLink("https://ottercorp.github.io/faq/support");
+                            Util.OpenLink("https://github.com/endfish/Dalamud");
                         }
 
                         var buttonHeight = 30 * ImGuiHelpers.GlobalScale;

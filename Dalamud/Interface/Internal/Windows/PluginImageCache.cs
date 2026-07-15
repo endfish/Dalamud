@@ -45,8 +45,6 @@ internal class PluginImageCache : IInternalDisposableService
     /// </summary>
     public const int PluginIconHeight = 512;
 
-    private const string MainRepoDip17ImageUrl = "https://s3test.ffxiv.wang/plugindistd17/{0}/{1}/images/{2}";
-
     [ServiceManager.ServiceDependency]
     private readonly HappyHttpClient happyHttpClient = Service<HappyHttpClient>.Get();
 
@@ -185,11 +183,10 @@ internal class PluginImageCache : IInternalDisposableService
     /// </summary>
     /// <param name="plugin">The installed plugin, if available.</param>
     /// <param name="manifest">The plugin manifest.</param>
-    /// <param name="isThirdParty">If the plugin was third party sourced.</param>
     /// <param name="iconTexture">Cached image textures, or an empty array.</param>
     /// <param name="loadedSince">The time the icon was successfully downloaded.</param>
     /// <returns>True if an entry exists, may be null if currently downloading.</returns>
-    public bool TryGetIcon(LocalPlugin? plugin, IPluginManifest manifest, bool isThirdParty, out IDalamudTextureWrap? iconTexture, out DateTime? loadedSince)
+    public bool TryGetIcon(LocalPlugin? plugin, IPluginManifest manifest, out IDalamudTextureWrap? iconTexture, out DateTime? loadedSince)
     {
         ArgumentNullException.ThrowIfNull(manifest);
 
@@ -215,11 +212,11 @@ internal class PluginImageCache : IInternalDisposableService
         {
             try
             {
-                var texture = await this.DownloadPluginIconAsync(plugin, manifest, isThirdParty, requestedFrame);
+                var texture = await this.DownloadPluginIconAsync(plugin, manifest, requestedFrame);
                 if (texture != null)
                     this.pluginIconMap[key] = new LoadedIcon(texture, DateTime.Now);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log.Error(ex, $"An unexpected error occurred with the icon for {manifest.InternalName}");
                 Log.Verbose($"An unexpected error occurred with the icon for {manifest.InternalName}");
@@ -235,10 +232,9 @@ internal class PluginImageCache : IInternalDisposableService
     /// </summary>
     /// <param name="plugin">The installed plugin, if available.</param>
     /// <param name="manifest">The plugin manifest.</param>
-    /// <param name="isThirdParty">If the plugin was third party sourced.</param>
     /// <param name="imageTextures">Cached image textures, or an empty array.</param>
     /// <returns>True if the image array exists, may be empty if currently downloading.</returns>
-    public bool TryGetImages(LocalPlugin? plugin, IPluginManifest manifest, bool isThirdParty, out IDalamudTextureWrap?[] imageTextures)
+    public bool TryGetImages(LocalPlugin? plugin, IPluginManifest manifest, out IDalamudTextureWrap?[] imageTextures)
     {
         ArgumentNullException.ThrowIfNull(manifest);
 
@@ -258,9 +254,9 @@ internal class PluginImageCache : IInternalDisposableService
         {
             try
             {
-                await this.DownloadPluginImagesAsync(target, plugin, manifest, isThirdParty, requestedFrame);
+                await this.DownloadPluginImagesAsync(target, plugin, manifest, requestedFrame);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log.Error(ex, $"An unexpected error occurred with the images for {manifest.InternalName}");
                 Log.Verbose($"An unexpected error occurred with the images for {manifest.InternalName}");
@@ -444,7 +440,7 @@ internal class PluginImageCache : IInternalDisposableService
         Log.Debug("Plugin image loader has shutdown");
     }
 
-    private async Task<IDalamudTextureWrap?> DownloadPluginIconAsync(LocalPlugin? plugin, IPluginManifest manifest, bool isThirdParty, ulong requestedFrame)
+    private async Task<IDalamudTextureWrap?> DownloadPluginIconAsync(LocalPlugin? plugin, IPluginManifest manifest, ulong requestedFrame)
     {
         if (plugin is { IsDev: true })
         {
@@ -471,13 +467,9 @@ internal class PluginImageCache : IInternalDisposableService
                     return fileIcon;
                 }
             }
-
-            // Dev plugins are likely going to look like a main repo plugin, the InstalledFrom field is going to be null.
-            // So instead, set the value manually so we download from the urls specified.
-            isThirdParty = true;
         }
 
-        var url = this.GetPluginIconUrl(manifest, isThirdParty);
+        var url = this.GetPluginIconUrl(manifest);
 
         if (url.IsNullOrEmpty())
         {
@@ -510,7 +502,7 @@ internal class PluginImageCache : IInternalDisposableService
         return icon;
     }
 
-    private async Task DownloadPluginImagesAsync(IDalamudTextureWrap?[] pluginImages, LocalPlugin? plugin, IPluginManifest manifest, bool isThirdParty, ulong requestedFrame)
+    private async Task DownloadPluginImagesAsync(IDalamudTextureWrap?[] pluginImages, LocalPlugin? plugin, IPluginManifest manifest, ulong requestedFrame)
     {
         if (plugin is { IsDev: true })
         {
@@ -556,13 +548,9 @@ internal class PluginImageCache : IInternalDisposableService
 
             if (pluginImages.Any(x => x != null))
                 return;
-
-            // Dev plugins are likely going to look like a main repo plugin, the InstalledFrom field is going to be null.
-            // So instead, set the value manually so we download from the urls specified.
-            isThirdParty = true;
         }
 
-        var urls = this.GetPluginImageUrls(manifest, isThirdParty);
+        var urls = this.GetPluginImageUrls(manifest);
         urls = urls?.Where(x => !string.IsNullOrEmpty(x)).ToList();
         if (urls?.Any() != true)
         {
@@ -621,37 +609,17 @@ internal class PluginImageCache : IInternalDisposableService
         }
     }
 
-    private string? GetPluginIconUrl(IPluginManifest manifest, bool isThirdParty)
+    private string? GetPluginIconUrl(IPluginManifest manifest) => manifest.IconUrl;
+
+    private List<string?>? GetPluginImageUrls(IPluginManifest manifest)
     {
-        if (isThirdParty)
-            return manifest.IconUrl;
-
-        if (manifest.Dip17Channel.IsNullOrEmpty())
-            return null;
-
-        return MainRepoDip17ImageUrl.Format(manifest.IsTestingExclusive ? manifest.Dip17Channel! : "stable", manifest.InternalName, "icon.png");
-    }
-
-    private List<string?>? GetPluginImageUrls(IPluginManifest manifest, bool isThirdParty)
-    {
-        if (isThirdParty)
+        if (manifest.ImageUrls?.Count > 5)
         {
-            if (manifest.ImageUrls?.Count > 5)
-            {
-                Log.Warning($"Plugin {manifest.InternalName} has too many images");
-                return manifest.ImageUrls.Take(5).ToList();
-            }
-
-            return manifest.ImageUrls;
+            Log.Warning($"Plugin {manifest.InternalName} has too many images");
+            return manifest.ImageUrls.Take(5).ToList();
         }
 
-        var output = new List<string>();
-        for (var i = 1; i <= 5; i++)
-        {
-            output.Add(MainRepoDip17ImageUrl.Format(manifest.IsTestingExclusive ? manifest.Dip17Channel! : "stable", manifest.InternalName, $"image{i}.png"));
-        }
-
-        return output;
+        return manifest.ImageUrls;
     }
 
     private FileInfo? GetPluginIconFileInfo(LocalPlugin? plugin)

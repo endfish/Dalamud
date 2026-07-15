@@ -54,7 +54,7 @@ internal sealed class SettingsTabAutoUpdates : SettingsTab
         var behaviorInt = (int)this.behavior;
         ImGui.RadioButton(Loc.Localize("DalamudSettingsAutoUpdateNone", "Do not check for updates automatically"), ref behaviorInt, (int)AutoUpdateBehavior.None);
         ImGui.RadioButton(Loc.Localize("DalamudSettingsAutoUpdateNotify", "Only notify me of new updates"), ref behaviorInt, (int)AutoUpdateBehavior.OnlyNotify);
-        ImGui.RadioButton(Loc.Localize("DalamudSettingsAutoUpdateMainRepo", "Auto-update main repository plugins"), ref behaviorInt, (int)AutoUpdateBehavior.UpdateMainRepo);
+        ImGui.RadioButton(Loc.Localize("DalamudSettingsAutoUpdateMainRepo", "Auto-update plugins from configured repositories"), ref behaviorInt, (int)AutoUpdateBehavior.UpdateMainRepo);
         ImGui.RadioButton(Loc.Localize("DalamudSettingsAutoUpdateAll", "Auto-update all plugins"), ref behaviorInt, (int)AutoUpdateBehavior.UpdateAll);
         this.behavior = (AutoUpdateBehavior)behaviorInt;
 
@@ -118,7 +118,7 @@ internal sealed class SettingsTabAutoUpdates : SettingsTab
                 if (pmPlugin != null)
                 {
                     var cursorBeforeIcon = ImGui.GetCursorPos();
-                    pic.TryGetIcon(pmPlugin, pmPlugin.Manifest, pmPlugin.IsThirdParty, out var icon, out _);
+                    pic.TryGetIcon(pmPlugin, pmPlugin.Manifest, out var icon, out _);
                     icon ??= pic.DefaultIcon;
 
                     ImGui.Image(icon.Handle, new Vector2(pluginLineHeight));

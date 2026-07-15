@@ -149,14 +149,6 @@ internal class ThirdRepoSettingsEntry : SettingsEntry
 
         ImGui.Separator();
 
-        ImGui.Text("0"u8);
-        ImGui.NextColumn();
-        ImGui.Text("XIVLauncher"u8);
-        ImGui.NextColumn();
-        ImGui.NextColumn();
-        ImGui.NextColumn();
-        ImGui.Separator();
-
         ThirdPartyRepoSettings repoToRemove = null;
 
         var repoNumber = 1;

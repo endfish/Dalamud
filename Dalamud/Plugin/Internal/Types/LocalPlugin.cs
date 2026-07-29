@@ -314,7 +314,7 @@ internal class LocalPlugin : IAsyncDisposable
             }
 
             if (pluginManager.IsManifestBanned(this.manifest) && !this.IsDev)
-                throw new BannedPluginException($"Unable to load {this.Name}, banned");
+                throw new BannedPluginException($"Unable to load {this.Name} as it was banned");
 
             if (this.manifest.ApplicableVersion < dalamud.StartInfo.GameVersion)
                 throw new PluginPreconditionFailedException($"Unable to load {this.Name}, game is newer than applicable version {this.manifest.ApplicableVersion}");
@@ -641,7 +641,13 @@ internal class LocalPlugin : IAsyncDisposable
         if (type.IsAssignableTo(typeof(IAsyncDalamudPlugin)))
         {
             var plugin = (IAsyncDalamudPlugin)await scope.CreateAsync(type, ObjectInstanceVisibility.ExposedToPlugins, dalamudInterface).ConfigureAwait(false);
-            await plugin.LoadAsync(CancellationToken.None).ConfigureAwait(false);
+
+            // TODO: Unlike plugin ctors, which ServiceContainer.CreateAsync invokes on a dedicated LongRunning thread,
+            // LoadAsync runs on regular thread pool threads. A plugin that blocks synchronously in LoadAsync (which it
+            // should't since it can await) occupies a pool thread for the duration of the load, and plugins can load
+            // in parallel. If this is ever a problem (probably will be), we should wrap this call in a similar
+            // LongRunning + Unwrap task to protect ourselves from deadlocks.
+            await plugin.LoadAsync(cancellationToken).ConfigureAwait(false);
             return plugin;
         }
 

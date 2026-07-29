@@ -43,7 +43,7 @@ namespace Dalamud.Injector
                 Init(args);
                 args.Remove("-v"); // Remove "verbose" flag
 
-                DalamudStartInfo startInfo = null;
+                DalamudStartInfo? startInfo = null;
                 if (args.Count == 1)
                 {
 #if !DEBUG
@@ -125,7 +125,8 @@ namespace Dalamud.Injector
             InitLogging(args.Any(x => x == "-v"), args);
             InitUnhandledException(args);
 
-            var cwd = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory;
+            var cwd = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory
+                      ?? throw new DirectoryNotFoundException("Could not determine binary location.");
             if (cwd.FullName != Directory.GetCurrentDirectory())
             {
                 Log.Debug($"Changing cwd to {cwd}");
@@ -632,7 +633,12 @@ namespace Dalamud.Injector
             }
 
             foreach (var process in processes)
-                Inject(process, AdjustStartInfo(dalamudStartInfo, process.MainModule.FileName), tryFixAcl);
+            {
+                var processBinaryPath = process.MainModule?.FileName
+                    ?? throw new CommandLineException($"Could not determine binary path for process {process.Id}.");
+
+                Inject(process, AdjustStartInfo(dalamudStartInfo, processBinaryPath), tryFixAcl);
+            }
 
             Log.CloseAndFlush();
             return 0;
@@ -640,7 +646,8 @@ namespace Dalamud.Injector
 
         private static DalamudStartInfo AdjustStartInfo(DalamudStartInfo startInfo, string gamePath)
         {
-            var ffxivDir = Path.GetDirectoryName(gamePath);
+            var ffxivDir = Path.GetDirectoryName(gamePath)
+                           ?? throw new DirectoryNotFoundException($"Could not determine parent directory of {gamePath}.");
             var gameVerStr = File.ReadAllText(Path.Combine(ffxivDir, "ffxivgame.ver"));
             var gameVer = GameVersion.Parse(gameVerStr);
 

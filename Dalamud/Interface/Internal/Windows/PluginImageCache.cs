@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -216,10 +217,9 @@ internal class PluginImageCache : IInternalDisposableService
                 if (texture != null)
                     this.pluginIconMap[key] = new LoadedIcon(texture, DateTime.Now);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Log.Error(ex, $"An unexpected error occurred with the icon for {manifest.InternalName}");
-                Log.Verbose($"An unexpected error occurred with the icon for {manifest.InternalName}");
+                Log.Error(ex, $"An unexpected error occurred with the icon for {manifest.InternalName}");
             }
         });
 
@@ -256,10 +256,9 @@ internal class PluginImageCache : IInternalDisposableService
             {
                 await this.DownloadPluginImagesAsync(target, plugin, manifest, requestedFrame);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Log.Error(ex, $"An unexpected error occurred with the images for {manifest.InternalName}");
-                Log.Verbose($"An unexpected error occurred with the images for {manifest.InternalName}");
+                Log.Error(ex, $"An unexpected error occurred with the images for {manifest.InternalName}");
             }
         });
 
@@ -550,35 +549,56 @@ internal class PluginImageCache : IInternalDisposableService
                 return;
         }
 
-        var urls = this.GetPluginImageUrls(manifest);
-        urls = urls?.Where(x => !string.IsNullOrEmpty(x)).ToList();
-        if (urls?.Any() != true)
+        var urlCandidates = this.GetPluginImageUrlCandidates(manifest);
+        if (urlCandidates.All(x => x.Count == 0))
         {
             Log.Verbose($"Images for {manifest.InternalName} are not available");
             return;
         }
 
         var tasks = new List<Task>();
-        for (var i = 0; i < urls.Count && i < pluginImages.Length; i++)
+        for (var i = 0; i < urlCandidates.Count && i < pluginImages.Length; i++)
         {
             var i2 = i;
-            var url = urls[i];
+            var candidates = urlCandidates[i];
+            if (candidates.Count == 0)
+                continue;
+
             tasks.Add(Task.Run(async () =>
             {
-                Log.Verbose($"Downloading image{i2 + 1} for {manifest.InternalName} from {url}");
-                // ReSharper disable once RedundantTypeArgumentsOfMethod
-                var bytes = await this.RunInDownloadQueue<byte[]?>(
-                                async () =>
-                                {
-                                    var httpClient = this.happyHttpClient.SharedHttpClient;
-                                    var data = await httpClient.GetAsync(url);
-                                    if (data.StatusCode == HttpStatusCode.NotFound)
-                                        return null;
+                byte[]? bytes = null;
+                string? loadedUrl = null;
+                foreach (var url in candidates)
+                {
+                    Log.Verbose($"Downloading image{i2 + 1} for {manifest.InternalName} from {url}");
+                    try
+                    {
+                        // ReSharper disable once RedundantTypeArgumentsOfMethod
+                        bytes = await this.RunInDownloadQueue<byte[]?>(
+                                    async () =>
+                                    {
+                                        var httpClient = this.happyHttpClient.SharedHttpClient;
+                                        using var data = await httpClient.GetAsync(url);
+                                        if (data.StatusCode == HttpStatusCode.NotFound)
+                                            return null;
 
-                                    data.EnsureSuccessStatusCode();
-                                    return await data.Content.ReadAsByteArrayAsync();
-                                },
-                                requestedFrame);
+                                        data.EnsureSuccessStatusCode();
+                                        return await data.Content.ReadAsByteArrayAsync();
+                                    },
+                                    requestedFrame);
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        Log.Warning(ex, $"Failed to download image{i2 + 1} for {manifest.InternalName} from {url}");
+                        continue;
+                    }
+
+                    if (bytes != null)
+                    {
+                        loadedUrl = url;
+                        break;
+                    }
+                }
 
                 if (bytes == null)
                     return;
@@ -586,7 +606,7 @@ internal class PluginImageCache : IInternalDisposableService
                 var image = await this.TryLoadImage(
                                 bytes,
                                 $"image{i2 + 1}",
-                                "queue",
+                                loadedUrl!,
                                 manifest,
                                 PluginImageWidth,
                                 PluginImageHeight,
@@ -611,15 +631,26 @@ internal class PluginImageCache : IInternalDisposableService
 
     private string? GetPluginIconUrl(IPluginManifest manifest) => manifest.IconUrl;
 
-    private List<string?>? GetPluginImageUrls(IPluginManifest manifest)
+    private List<List<string>> GetPluginImageUrlCandidates(IPluginManifest manifest)
     {
-        if (manifest.ImageUrls?.Count > 5)
-        {
+        if (manifest.ImageUrls is { Count: > 5 })
             Log.Warning($"Plugin {manifest.InternalName} has too many images");
-            return manifest.ImageUrls.Take(5).ToList();
+
+        var output = Enumerable.Range(0, 5).Select(_ => new List<string>()).ToList();
+        if (manifest.ImageUrls == null)
+            return output;
+
+        for (var i = 0; i < manifest.ImageUrls.Count && i < output.Count; i++)
+        {
+            var url = manifest.ImageUrls[i];
+            if (Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                output[i].Add(url);
+            }
         }
 
-        return manifest.ImageUrls;
+        return output;
     }
 
     private FileInfo? GetPluginIconFileInfo(LocalPlugin? plugin)

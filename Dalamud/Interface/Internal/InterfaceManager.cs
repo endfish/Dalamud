@@ -607,6 +607,7 @@ internal partial class InterfaceManager : IInternalDisposableService
         // The game loads shader packages on the file thread and then compiles them. It will show the logo once it is done.
         // This is a workaround, but it fixes an issue where the game would take a very long time to get to the title screen.
         // NetworkModuleProxy is set up after lua scripts are loaded (EventFramework.LoadState >= 5), which can only happen
+        // after the shaders are compiled (if necessary) and loaded. AgentLobby.Update doesn't do much until this condition is met.
         if (CSFramework.Instance()->GetNetworkModuleProxy() == null)
             return;
 
@@ -1230,6 +1231,9 @@ internal partial class InterfaceManager : IInternalDisposableService
 
     private void Display()
     {
+        if (this.framework.IsFrameworkUnloading)
+            return;
+
         // this is more or less part of what reshade/etc do to avoid having to manually
         // set the cursor inside the ui
         // This will just tell ImGui to draw its own software cursor instead of using the hardware cursor

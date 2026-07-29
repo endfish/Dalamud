@@ -99,7 +99,7 @@ internal class PluginRepository
     /// </summary>
     /// <param name="skipCache">Skip MemoryCache.</param>
     /// <returns>The new state.</returns>
-    public async Task ReloadAsync(bool skipCache)
+    public async Task ReloadAsync(bool skipCache = false)
     {
         this.State = PluginRepositoryState.InProgress;
         this.PluginMaster = new List<RemotePluginManifest>().AsReadOnly();
@@ -177,8 +177,6 @@ internal class PluginRepository
 
     private async Task<HttpResponseMessage> GetPluginMaster(string url, int timeout = HttpRequestTimeoutSeconds)
     {
-        //var httpClient = Service<HappyHttpClient>.Get().SharedHttpClient;
-
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };

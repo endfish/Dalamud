@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using FFXIVClientStructs.FFXIV.Client.UI;
@@ -17,7 +19,7 @@ public sealed class CnUiLayoutTests
     [InlineData("RaptureAtkUnitManager", 0x13450)]
     [InlineData("RaptureAtkColorDataManager", 0x1D180)]
     public void RaptureAtkModuleOffsets(string field, int expected)
-        => Assert.Equal(expected, Marshal.OffsetOf<RaptureAtkModule>(field).ToInt32());
+        => Assert.Equal(expected, OffsetOf<RaptureAtkModule>(field));
 
     [Theory]
     [InlineData("ConfigModule", 0xAAE40)]
@@ -28,11 +30,16 @@ public sealed class CnUiLayoutTests
     [InlineData("UIInputData", 0xFF020)]
     [InlineData("UIInputModule", 0xFFA50)]
     public void UIModuleOffsets(string field, int expected)
-        => Assert.Equal(expected, Marshal.OffsetOf<UIModule>(field).ToInt32());
+        => Assert.Equal(expected, OffsetOf<UIModule>(field));
 
     [Fact]
     public void EmbeddedAtkModuleEndsAtInfoModule()
         => Assert.Equal(
-            Marshal.OffsetOf<UIModule>("InfoModule").ToInt32(),
-            Marshal.OffsetOf<UIModule>("RaptureAtkModule").ToInt32() + Marshal.SizeOf<RaptureAtkModule>());
+            OffsetOf<UIModule>("InfoModule"),
+            OffsetOf<UIModule>("RaptureAtkModule") + Unsafe.SizeOf<RaptureAtkModule>());
+
+    // These types contain unmanaged function pointers and do not support Marshal.OffsetOf.
+    private static int OffsetOf<T>(string field)
+        => typeof(T).GetField(field, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
+            .GetCustomAttribute<FieldOffsetAttribute>()!.Value;
 }

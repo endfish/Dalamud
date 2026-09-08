@@ -42,6 +42,7 @@ namespace Dalamud.Injector
 
                 Init(args);
                 args.Remove("-v"); // Remove "verbose" flag
+                args.Remove("--verbose");
 
                 DalamudStartInfo? startInfo = null;
                 if (args.Count == 1)
